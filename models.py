@@ -1,4 +1,5 @@
-from keras.layers import Input, Conv2D, MaxPool2D, UpSampling2D, Activation, concatenate, BatchNormalization, Conv2DTranspose, Dropout
+from keras.layers import Input, Conv2D, MaxPool2D, UpSampling2D, Activation, concatenate, BatchNormalization, Dropout
+from keras.layers import Conv2DTranspose, ConvLSTM2D
 from keras.models import Model
 
 def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
@@ -44,4 +45,13 @@ def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
 
     model = Model(inp, output, name='U-Net')
 
+    return model
+
+def UConvLSTM_Nto1(n_classes, filters=32, ts=5):
+    ''' ts: numer of time-steps (window size) '''
+    in_im = Input(shape=(ts, None, None, 1))
+    x = ConvLSTM2D(filters=filters, kernel_size=(3,3), padding="same")(in_im)
+    out = Conv2D(n_classes, (1,1), activation = 'softmax')(x)
+    model = Model(in_im, out)
+    
     return model

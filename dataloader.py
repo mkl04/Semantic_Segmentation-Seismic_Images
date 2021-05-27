@@ -193,9 +193,8 @@ class section_loader_ts():
         # Normal train/val mode
         self.seismic = np.load(pjoin(self.root,'train','train_seismic.npy'))
         self.labels  = np.load(pjoin(self.root,'train','train_labels.npy' ))
-        self.labels  = to_categorical(self.labels,num_classes=self.n_classes)
+        self.labels  = to_categorical(self.labels, num_classes=self.n_classes)
 
-        #for split in ['train', 'val', 'train_val']:
         path = pjoin(self.root, 'splits', 'section_' + self.split + '.txt')
         patch_list = tuple(open(path, 'r'))
         self.patch_list = patch_list
@@ -204,7 +203,7 @@ class section_loader_ts():
         
         for indexes in self.patch_list:
             direction, number = indexes.split(sep='_')
-            if direction == self.direct and number not in np.arange(0,self.window-1):
+            if direction == self.direct and int(number) not in np.arange(0,self.window-1):
                 self.index_direct.append(number)
 
     def __len__(self):
