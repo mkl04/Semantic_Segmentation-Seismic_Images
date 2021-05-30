@@ -84,7 +84,7 @@ def calculate_metrics_total(Y1, Y1p, Y2, Y2p):
     fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
     print("FWIOU: ", np.round(fwavacc,4))
     print("mIoU: ", mean_iu)
-    print("freq:", freq)
+    # print("freq:", freq)
 
 def make_divisible(img_shape, div = 16, mode = 'sup'):
     a = (img_shape[1]//div)*div

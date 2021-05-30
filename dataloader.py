@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import cv2
+import os
 from os.path import join as pjoin
 from keras.utils import to_categorical
 from keras import backend as K
@@ -8,8 +9,13 @@ from keras import backend as K
 from utils import make_divisible
 
 
-def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_val=0.3):
+def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_val=0.3, loc='sd'):
     '''Create inline and crossline 2D sections for training and validation'''
+    
+    if loc=='sd':
+        path_data = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    else:
+        path_data = 'data'
 
     iline, xline = im_shape
     
@@ -46,11 +52,16 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
     p_tr_list+=aux1
     p_vl_list+=aux2
     
-    file_object = open(pjoin('data', 'splits', loader_type + '_train.txt'), 'w')
+    path_splits = pjoin(path_data, 'new_splits')
+    
+    if not os.path.exists(path_splits):
+        os.makedirs(path_splits)
+    
+    file_object = open(pjoin(path_splits, loader_type + '_train.txt'), 'w')
     file_object.write('\n'.join(p_tr_list))
     file_object.close()
     
-    file_object = open(pjoin('data', 'splits', loader_type + '_val.txt'), 'w')
+    file_object = open(pjoin(path_splits, loader_type + '_val.txt'), 'w')
     file_object.write('\n'.join(p_vl_list))
     file_object.close()
 
@@ -58,8 +69,12 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
 class section_loader():
     ''' Section loader for images'''
 
-    def __init__(self, direct = "i", split='train'):
-        self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    def __init__(self, direct="i", split='train', loc='sd'):
+
+        if loc=="sd":
+            self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+        else:
+            self.root = 'data'
         self.split = split
         self.n_classes = 6 
         self.mean = 0.000941 # average of the training data  
@@ -130,10 +145,12 @@ def F3_generator(dataset, _bs):
             yield x_batch, y_batch
 
 
-def section_loader_test(model, split = 'test1', backbone=False, get_prob=False, normalize=False):
+def section_loader_test(model, split='test1', backbone=False, get_prob=False, normalize=False, loc='sd'):
 
-    # root = '../dataset/F3'
-    root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    if loc=="sd":
+        root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    else:
+        root = 'data'
 
     seismic = np.load(pjoin(root,'test_once', split + '_seismic.npy'))
     
@@ -181,10 +198,12 @@ def section_loader_test(model, split = 'test1', backbone=False, get_prob=False, 
 class section_loader_ts():
     ''' Section loader for time-series images'''
 
-    def __init__(self, direct = "i", split='train', window=5):
-
-        # self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
-        self.root = 'data'
+    def __init__(self, direct="i", split='train', window=5, loc='sd'):
+        
+        if loc=="sd":
+            self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+        else:
+            self.root = 'data'
         self.split = split
         self.n_classes = 6 
         self.direct = direct
@@ -195,6 +214,7 @@ class section_loader_ts():
         self.labels  = np.load(pjoin(self.root,'train','train_labels.npy' ))
         self.labels  = to_categorical(self.labels, num_classes=self.n_classes)
 
+        #for split in ['train', 'val']:
         path = pjoin(self.root, 'splits', 'section_' + self.split + '.txt')
         patch_list = tuple(open(path, 'r'))
         self.patch_list = patch_list
@@ -203,6 +223,7 @@ class section_loader_ts():
         
         for indexes in self.patch_list:
             direction, number = indexes.split(sep='_')
+            # ignore the first slides
             if direction == self.direct and int(number) not in np.arange(0,self.window-1):
                 self.index_direct.append(number)
 
@@ -238,3 +259,70 @@ class section_loader_ts():
 
             yield im, lbl
 
+
+def section_loader_test_ts(model, split='test1', backbone=False, get_prob=False, normalize=False, loc='sd', window=5):
+
+    if loc=="sd":
+        root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    else:
+        root = 'data'
+
+    seismic = np.load(pjoin(root,'test_once', split + '_seismic.npy'))
+    
+    #for split in ['test1', 'test2']:
+    path = pjoin(root, 'splits', 'section_' + split + '.txt')
+    patch_list = tuple(open(path, 'r'))
+    
+    output_p = np.zeros(seismic.shape + (6,))
+
+    for indexes in patch_list:
+
+        direction, number = indexes.split(sep='_')
+        number = int(number)
+        
+        if number in np.arange(0,window-1):
+            idx_l = number
+            idx_r = number+window
+            flip_ = True
+        else:
+            idx_l = number-window+1
+            idx_r = number+1
+            flip_ = False
+            
+        if direction == 'i':
+            im = seismic[idx_l:idx_r,:,:]
+        elif direction == 'x':    
+            im = seismic[:,idx_l:idx_r,:]
+            im = np.rollaxis(im, 1, 0)
+        
+        if flip_: # for first slides, we have to change de direction of timesteps images
+            im = np.flip(im, axis=0) 
+        
+        
+        img_size = im.shape[1:3] # H, W
+        a, b = make_divisible(img_size)
+        
+        im = np.vstack([np.expand_dims(cv2.resize(im[idx], (a,b)) , axis=0) for idx in range(window)])
+        
+        im = np.expand_dims(im, axis = -1)
+        im = np.expand_dims(im, axis =  0)
+
+#         if backbone:
+#             im = (np.repeat(im,3,axis=3)+1)/2.
+        
+        if normalize:
+            im = (im+1)/2.
+
+        model_output = model.predict(im)
+        model_output = cv2.resize(model_output[0], (img_size[1], img_size[0]))
+            
+        if direction == 'i':
+            output_p[number,:,:,:] += model_output
+            
+        if direction == 'x':
+            output_p[:,number,:,:] += model_output
+            
+    if get_prob:
+        return output_p/2.
+    
+    return np.argmax(output_p,axis=-1)
