@@ -143,8 +143,8 @@ path_data = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
 labels1  = np.load(pjoin(path_data,'test_once', 'test1_labels.npy' ))
 labels2  = np.load(pjoin(path_data,'test_once', 'test2_labels.npy' ))
 
-labels_predict1 = section_loader_test_ts(model, 'test1')
-labels_predict2 = section_loader_test_ts(model, 'test2')
+labels_predict1 = section_loader_test_ts(model, 'test1', window=ts)
+labels_predict2 = section_loader_test_ts(model, 'test2', window=ts)
 
 calculate_metrics_total(labels1, labels_predict1, labels2, labels_predict2)
 

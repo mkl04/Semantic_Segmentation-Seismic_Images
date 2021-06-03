@@ -24,14 +24,42 @@ def zoom(x,y):
     # Only apply zoom 50% of the time
     return tf.cond(choice < 0.5, lambda: (x,y) , lambda: auxf(x,y))
 
+def zoom_ts(x,y):
 
-def make_aug(dataset, type_aug):
+    def auxf_ts(x,y):
+        ratio = 0.75 
+        sh = tf.cast(tf.shape(x) , tf.float32)
+        sh_lab = tf.cast(tf.shape(y) , tf.float32)
+        crop_size_img = [tf.math.round(sh[1]*ratio), tf.math.round(sh[2]*ratio), sh[3]]
+        crop_size_lab = [tf.math.round(sh[1]*ratio), tf.math.round(sh[2]*ratio), sh_lab[2]]
+        x_crop = tf.stack([tf.random_crop(value = x[idx], size = crop_size_img, seed = 42) for idx in range(x.get_shape()[0])])
+        y_crop = tf.random_crop(value = y, size = crop_size_lab, seed = 42)
 
-    if type_aug == "aug1":
-        dataset = dataset.map(zoom)
+        x_back = tf.stack([tf.image.resize_images(x_crop[idx], size = tf.cast(sh[1:3], tf.int32)) for idx in range(x.get_shape()[0])])
+        y_back = tf.image.resize_images(y_crop, size = tf.cast(sh[1:3], tf.int32))
 
-    # if type_aug == "aug2":
-    #     dataset = dataset.concatenate(aug1).concatenate(aug2).concatenate(aug4)
+        return tf.cast(x_back, tf.float64), tf.cast(tf.math.round(y_back), tf.float32)
+    
+    choice = tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32)
+
+    # Only apply zoom 50% of the time
+    return tf.cond(choice < 0.1, lambda: (x,y) , lambda: auxf_ts(x,y))
+
+
+def make_aug(dataset, type_aug, mode="normal"):
+
+    if mode=="normal":
+
+        if type_aug == "aug1":
+            dataset = dataset.map(zoom)
+
+        # if type_aug == "aug2":
+        #     dataset = dataset.concatenate(aug1).concatenate(aug2).concatenate(aug4)
+
+    else:
+
+        if type_aug == "aug1":
+            dataset = dataset.map(zoom_ts)
 
     return dataset
 
@@ -73,9 +101,9 @@ def calculate_metrics_total(Y1, Y1p, Y2, Y2p):
     acc = np.diag(hist).sum() / hist.sum()
     print("Pixel Accuracy: ", np.round(acc,4))
     acc_cls = np.round(np.diag(hist) / hist.sum(axis=1), 3)[::-1]
-    print("Class Accuracy: ", acc_cls)
+    # print("Class Accuracy: ", acc_cls)
     mean_acc_cls = np.nanmean(acc_cls)
-    print("Mean Class Accuracy: ", mean_acc_cls)
+    print("Mean Class Accuracy: ", np.round(mean_acc_cls,4))
 
     # Freq Weighted IoU:
     iu = np.diag(hist) / (hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist))
@@ -83,6 +111,7 @@ def calculate_metrics_total(Y1, Y1p, Y2, Y2p):
     freq = hist.sum(axis=1) / hist.sum() # fraction of the pixels that come from each class
     fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
     print("FWIOU: ", np.round(fwavacc,4))
+    print("Class Accuracy: ", acc_cls)
     print("mIoU: ", mean_iu)
     # print("freq:", freq)
 
