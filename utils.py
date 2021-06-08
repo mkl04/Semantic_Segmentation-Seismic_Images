@@ -43,7 +43,7 @@ def zoom_ts(x,y):
     choice = tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32)
 
     # Only apply zoom 50% of the time
-    return tf.cond(choice < 0.1, lambda: (x,y) , lambda: auxf_ts(x,y))
+    return tf.cond(choice < 0.5, lambda: (x,y) , lambda: auxf_ts(x,y))
 
 
 def make_aug(dataset, type_aug, mode="normal"):

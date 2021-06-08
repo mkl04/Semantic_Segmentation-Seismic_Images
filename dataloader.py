@@ -235,6 +235,11 @@ class section_loader_ts():
         for number in self.index_direct:
             number = int(number)
 
+            rand_val = np.random.uniform(0, 1)
+            if rand_val > 0.5: # add both directions like data augmentation
+                self.seismic = np.flip(self.seismic, axis=0)
+                self.labels = np.flip(self.labels, axis=0)
+
             if self.direct == 'i':
                 im = self.seismic[(number-self.window+1):(number+1),:,:]
                 lbl = self.labels[number,:,:,:]
