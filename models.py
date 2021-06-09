@@ -1,7 +1,9 @@
 from keras.layers import Input, Conv2D, MaxPool2D, UpSampling2D, Activation, concatenate, BatchNormalization, Dropout
-from keras.layers import Conv2DTranspose, ConvLSTM2D, Bidirectional, TimeDistributed, AveragePooling2D, MaxPooling2D, Lambda
+from keras.layers import Conv2DTranspose, ConvLSTM2D, Bidirectional, TimeDistributed, AveragePooling2D, MaxPooling2D, Lambda, GlobalAveragePooling2D
 from keras.models import Model
 from keras.regularizers import l1,l2
+from keras import backend as K
+import tensorflow as tf
 
 def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
     # first layer
@@ -201,6 +203,74 @@ def BUnetConvLSTM_Nto1_skip(n_classes, filters=16, filters_lstm=64, ts=5):
 
     out=convolution_layer(d1, filters)
     out = Conv2D(n_classes, (1, 1), activation='softmax', padding='same')(out)
+    model=Model(in_im, out)
+
+    return model
+
+
+def dilated_layer(x, filter_size, dilation_rate=1, kernel_size=3, weight_decay=1E-4):
+    '''r: dilated_rate'''
+    x = Conv2D(filter_size, kernel_size, padding='same', dilation_rate=dilation_rate)(x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay), beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    return x
+
+def dilated_layer_over_time(x, filter_size, dilation_rate=1, kernel_size=3, weight_decay=1E-4):
+    '''r: dilated_rate'''
+    x = TimeDistributed(Conv2D(filter_size, kernel_size, padding='same', dilation_rate=dilation_rate)) (x)
+    x = BatchNormalization(gamma_regularizer=l2(weight_decay), beta_regularizer=l2(weight_decay)) (x)
+    x = Activation('relu')(x)
+    return x
+
+def im_pooling_layer(x, filter_size):
+    pooling=True
+    shape_before=tf.shape(x)
+    # deb.prints(K.int_shape(x))
+    if pooling==True:
+        mode=2
+        if mode==1:
+            x=TimeDistributed(GlobalAveragePooling2D())(x)
+            # deb.prints(K.int_shape(x))
+            x=K.expand_dims(K.expand_dims(x,2),2)
+        elif mode==2:
+            x=TimeDistributed(AveragePooling2D((32,32)))(x)
+            # deb.prints(K.int_shape(x))
+            
+    # deb.prints(K.int_shape(x))
+    x=dilated_layer_over_time(x, filter_size, 1, kernel_size=1)
+    # deb.prints(K.int_shape(x))
+
+    if pooling==True:
+        x = TimeDistributed(Lambda(lambda y: K.tf.image.resize_bilinear(y,size=(32,32))))(x)
+    # deb.prints(K.int_shape(x))
+    return x
+
+def spatial_pyramid_pooling(in_im, filter_size, max_rate=8, global_average_pooling=False):
+    x=[]
+    if max_rate>=1:
+        x.append(dilated_layer_over_time(in_im,filter_size,1))
+    if max_rate>=2:
+        x.append(dilated_layer_over_time(in_im,filter_size,2)) #6
+    if max_rate>=4:
+        x.append(dilated_layer_over_time(in_im,filter_size,4)) #12
+    if max_rate>=8:
+        x.append(dilated_layer_over_time(in_im,filter_size,8)) #18
+    if global_average_pooling==True:
+        x.append(im_pooling_layer(in_im, filter_size))
+    out = concatenate(x, axis=4)
+    return out
+
+def BAtrousConvLSTM(n_classes, filters=16, filters_lstm=128, ts=5, gap=False):
+    ''' ts: numer of time-steps (window size) '''
+    in_im = Input(shape=(ts, None, None, 1))
+
+    x=dilated_layer_over_time(in_im, filters)
+    x=dilated_layer_over_time(x, filters)
+    x=spatial_pyramid_pooling(x, filters*4, max_rate=8, global_average_pooling=gap)
+    
+    x=Bidirectional(ConvLSTM2D(filters_lstm, 3, return_sequences=False, padding="same"), merge_mode='concat')(x)
+
+    out = Conv2D(n_classes, (1, 1), activation='softmax', padding='same')(x)
     model=Model(in_im, out)
 
     return model
