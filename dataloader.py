@@ -300,7 +300,7 @@ def section_loader_test_ts(model, split='test1', backbone=False, get_prob=False,
             im = seismic[:,idx_l:idx_r,:]
             im = np.rollaxis(im, 1, 0)
         
-        if flip_: # for first slides, we have to change de direction of timesteps images
+        if flip_: # for first slides, we have to change of direction of timesteps images
             im = np.flip(im, axis=0) 
         
         
@@ -326,6 +326,150 @@ def section_loader_test_ts(model, split='test1', backbone=False, get_prob=False,
             
         if direction == 'x':
             output_p[:,number,:,:] += model_output
+            
+    if get_prob:
+        return output_p/2.
+    
+    return np.argmax(output_p,axis=-1)
+
+##########################
+# N to N
+##########################
+
+class section_loader_ts_n2n():
+    ''' Section loader for time-series images'''
+
+    def __init__(self, direct="i", split='train', window=5, loc='sd'):
+        
+        if loc=="sd":
+            self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+        else:
+            self.root = 'data'
+        self.split = split
+        self.n_classes = 6 
+        self.direct = direct
+        self.window = window
+
+        # Normal train/val mode
+        self.seismic = np.load(pjoin(self.root,'train','train_seismic.npy'))
+        self.labels  = np.load(pjoin(self.root,'train','train_labels.npy' ))
+        self.labels  = to_categorical(self.labels, num_classes=self.n_classes)
+
+        #for split in ['train', 'val']:
+        path = pjoin(self.root, 'splits', 'section_' + self.split + '.txt')
+        patch_list = tuple(open(path, 'r'))
+        self.patch_list = patch_list
+        
+        self.index_direct = []
+        
+        for indexes in self.patch_list:
+            direction, number = indexes.split(sep='_')
+            # ignore the first slides
+            if direction == self.direct and int(number) not in np.arange(0,self.window-1):
+                self.index_direct.append(number)
+
+    def __len__(self):
+        return len(self.index_direct)
+    
+    def generator(self):
+        
+        for number in self.index_direct:
+            number = int(number)
+            
+            rand_val = np.random.uniform(0, 1)
+            if rand_val > 0.5: # add both directions like data augmentation
+                self.seismic = np.flip(self.seismic, axis=0)
+                self.labels = np.flip(self.labels, axis=0)
+            
+            if self.direct == 'i':
+                im = self.seismic[(number-self.window+1):(number+1),:,:]
+                lbl = self.labels[(number-self.window+1):(number+1),:,:]
+            elif self.direct == 'x':    
+                im = self.seismic[:,(number-self.window+1):(number+1),:]
+                lbl = self.labels[:,(number-self.window+1):(number+1),:]
+                
+            if im.shape[0] == 401:
+                im = [np.expand_dims(cv2.resize(im[:,idx,:], (256,400)) , axis=0) for idx in range(self.window)]
+                im = np.vstack(im)
+                lbl = [np.expand_dims(cv2.resize(lbl[:,idx,:], (256,400)) , axis=0) for idx in range(self.window)]
+                lbl = np.vstack(lbl)
+
+            else:
+                im = [np.expand_dims(cv2.resize(im[idx,:,:], (256,688)) , axis=0) for idx in range(self.window)]
+                im = np.vstack(im)
+                lbl = [np.expand_dims(cv2.resize(lbl[idx,:,:], (256,688)) , axis=0) for idx in range(self.window)]
+                lbl = np.vstack(lbl)
+                
+            im = np.expand_dims(im, axis = -1)
+
+            #just to test normalize form -> have to modify test
+            # im = (im+1)/2.
+
+            yield im, lbl
+
+
+def section_loader_test_ts_n2n(model, split='test1', backbone=False, get_prob=False, normalize=False, loc='sd', window=5):
+
+    if loc=="sd":
+        root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    else:
+        root = 'data'
+
+    seismic = np.load(pjoin(root,'test_once', split + '_seismic.npy'))
+    
+    #for split in ['test1', 'test2']:
+    path = pjoin(root, 'splits', 'section_' + split + '.txt')
+    patch_list = tuple(open(path, 'r'))
+    
+    output_p = np.zeros(seismic.shape + (6,))
+
+    for indexes in patch_list:
+
+        direction, number = indexes.split(sep='_')
+        number = int(number)
+        
+        if number in np.arange(0,window-1):
+            idx_l = number
+            idx_r = number+window
+            flip_ = True
+        else:
+            idx_l = number-window+1
+            idx_r = number+1
+            flip_ = False
+            
+        if direction == 'i':
+            im = seismic[idx_l:idx_r,:,:]
+        elif direction == 'x':    
+            im = seismic[:,idx_l:idx_r,:]
+            im = np.rollaxis(im, 1, 0)
+        
+        if flip_: # for first slides, we have to change of direction of timesteps images
+            im = np.flip(im, axis=0) 
+        
+        img_size = im.shape[1:3] # H, W
+        a, b = make_divisible(img_size)
+        
+        im = np.vstack([np.expand_dims(cv2.resize(im[idx], (a,b)) , axis=0) for idx in range(window)])
+        
+        im = np.expand_dims(im, axis = -1)
+        im = np.expand_dims(im, axis =  0)
+
+        if normalize:
+            im = (im+1)/2.
+
+        model_output = model.predict(im)
+        model_output = np.vstack([
+            np.expand_dims(cv2.resize(model_output[0, idx], (img_size[1], img_size[0])) , axis=0) for idx in range(window)])
+        
+        if flip_: # for first slides, we have to return to the correct direction of timesteps images
+            model_output = np.flip(model_output, axis=0) 
+            
+        if direction == 'i':
+            output_p[idx_l:idx_r,:,:,:] += model_output
+            
+        if direction == 'x':
+            model_output = np.rollaxis(model_output, 1, 0)
+            output_p[:,idx_l:idx_r,:,:] += model_output
             
     if get_prob:
         return output_p/2.
