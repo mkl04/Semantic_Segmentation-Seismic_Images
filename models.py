@@ -1,5 +1,6 @@
 from keras.layers import Input, Conv2D, MaxPool2D, UpSampling2D, Activation, concatenate, BatchNormalization, Dropout
-from keras.layers import Conv2DTranspose, ConvLSTM2D, Bidirectional, TimeDistributed, AveragePooling2D, MaxPooling2D, Lambda, GlobalAveragePooling2D
+from keras.layers import Conv2DTranspose, ConvLSTM2D, Bidirectional, TimeDistributed, AveragePooling2D, MaxPooling2D, Lambda
+from keras.layers import GlobalAveragePooling2D, add
 from keras.models import Model
 from keras.regularizers import l1,l2
 from keras import backend as K
@@ -376,4 +377,70 @@ def BUnetConvLSTM2_NtoN(n_classes, filters=16, filters_lstm=64, ts=5):
     out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(out)
     model = Model(in_im, out)
     
+    return model
+
+def bottleneck_ts(x, filters_bottleneck, mode='cascade', depth=6,
+               kernel_size=(3, 3), activation='relu'):
+    dilated_layers = []
+    if mode == 'cascade':  # used in the competition
+        for i in range(depth):
+            x = TimeDistributed(Conv2D(filters_bottleneck, kernel_size,
+                       activation=activation, padding='same', dilation_rate=2**i))(x)
+            dilated_layers.append(x)
+        return add(dilated_layers)
+    elif mode == 'parallel':  # Like "Atrous Spatial Pyramid Pooling"
+        for i in range(depth):
+            dilated_layers.append(
+                TimeDistributed(Conv2D(filters_bottleneck, kernel_size,
+                       activation=activation, padding='same', dilation_rate=2**i))(x)
+            )
+        return add(dilated_layers)
+
+def UNetDilated_ts(n_classes, filters=64, n_block=4, BN=False, DP=False, ts=5, mode="parallel"):
+    ''' Nto1 
+    ts: numer of time-steps (window size) '''
+    inp = Input(shape=(ts, None, None, 1))
+    
+    enc, skip = encoder_ts(inp, filters, n_block, BN, DP)
+    bottle = bottleneck_ts(enc, filters_bottleneck=filters * 2**n_block, mode=mode)
+    bottle = Bidirectional(ConvLSTM2D(filters * 2**n_block, 3, return_sequences=False, padding="same"), merge_mode='concat')(bottle)
+    dec = decoder(bottle, skip, filters, n_block, BN, DP)
+    output = Conv2D(n_classes, (1, 1), activation='softmax')(dec)
+
+    model = Model(inp, output, name='U-Net_Dil_ConvLSTM')
+
+    return model
+
+def encoder_ts_n2n(x, filters=16, n_block=3, batchnorm=False, dropout=False):
+    skip = []
+    for i in range(n_block):
+        x = conv2d_block_ts(x, filters * 2**i, kernel_size=3, batchnorm=batchnorm)
+        skip.append(x)
+        x = TimeDistributed(MaxPool2D(2))(x)
+        if dropout:
+            x = Dropout(0.2)(x)
+    return x, skip
+
+def decoder_ts(x, skip, filters, n_block=3, batchnorm=False, dropout=False):
+    for i in reversed(range(n_block)):
+        x = TimeDistributed(Conv2DTranspose(filters * 2**i, 3, strides=2, padding='same'))(x)
+        x = concatenate([x, skip[i]], axis=4)
+        if dropout:
+            x = Dropout(0.2)(x)
+        x = conv2d_block_ts(x, filters * 2**i, kernel_size=3, batchnorm=batchnorm)
+    return x
+
+def UNetDilated_ts_n2n(n_classes, filters=64, n_block=4, BN=False, DP=False, ts=5, mode="parallel"):
+    ''' NtoN
+    ts: numer of time-steps (window size) '''
+    inp = Input(shape=(ts, None, None, 1))
+    
+    enc, skip = encoder_ts_n2n(inp, filters, n_block, BN, DP)
+    bottle = bottleneck_ts(enc, filters_bottleneck=filters * 2**n_block, mode=mode)
+    bottle = Bidirectional(ConvLSTM2D(filters * 2**n_block, 3, return_sequences=True, padding="same"), merge_mode='concat')(bottle)
+    dec = decoder_ts(bottle, skip, filters, n_block, BN, DP)
+    output = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax'))(dec)
+
+    model = Model(inp, output, name='U-Net_Dil_ConvLSTM_NtoN')
+
     return model
