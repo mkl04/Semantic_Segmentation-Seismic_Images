@@ -74,7 +74,8 @@ def encoder_ts(x, filters=16, n_block=3, batchnorm=False, dropout=False):
     return x, skip
 
 def UNet_ts(n_classes, filters=64, n_block=4, BN=False, DP=False, ts=5):
-    
+    ''' Nto1 
+    ts: numer of time-steps (window size) '''
     inp = Input(shape=(ts, None, None, 1))
     
     enc, skip = encoder_ts(inp, filters, n_block, BN, DP)
@@ -225,24 +226,18 @@ def dilated_layer_over_time(x, filter_size, dilation_rate=1, kernel_size=3, weig
 def im_pooling_layer(x, filter_size):
     pooling=True
     shape_before=tf.shape(x)
-    # deb.prints(K.int_shape(x))
     if pooling==True:
         mode=2
         if mode==1:
             x=TimeDistributed(GlobalAveragePooling2D())(x)
-            # deb.prints(K.int_shape(x))
             x=K.expand_dims(K.expand_dims(x,2),2)
         elif mode==2:
             x=TimeDistributed(AveragePooling2D((32,32)))(x)
-            # deb.prints(K.int_shape(x))
             
-    # deb.prints(K.int_shape(x))
     x=dilated_layer_over_time(x, filter_size, 1, kernel_size=1)
-    # deb.prints(K.int_shape(x))
 
     if pooling==True:
         x = TimeDistributed(Lambda(lambda y: K.tf.image.resize_bilinear(y,size=(32,32))))(x)
-    # deb.prints(K.int_shape(x))
     return x
 
 def spatial_pyramid_pooling(in_im, filter_size, max_rate=8, global_average_pooling=False):
@@ -255,8 +250,8 @@ def spatial_pyramid_pooling(in_im, filter_size, max_rate=8, global_average_pooli
         x.append(dilated_layer_over_time(in_im,filter_size,4)) #12
     if max_rate>=8:
         x.append(dilated_layer_over_time(in_im,filter_size,8)) #18
-    if global_average_pooling==True:
-        x.append(im_pooling_layer(in_im, filter_size))
+    # if global_average_pooling==True:
+    #     x.append(im_pooling_layer(in_im, filter_size))
     out = concatenate(x, axis=4)
     return out
 
@@ -282,6 +277,7 @@ def UConvLSTM_NtoN(n_classes, filters=32, ts=5):
     x = ConvLSTM2D(filters=filters, kernel_size=(3,3), return_sequences=True, padding="same")(in_im)
     out = TimeDistributed(Conv2D(n_classes, (1,1), activation = 'softmax', padding='same'))(x)
     model = Model(in_im, out)
+
     return model
 
 def BConvLSTM_NtoN(n_classes, filters=32, ts=5):
@@ -292,6 +288,7 @@ def BConvLSTM_NtoN(n_classes, filters=32, ts=5):
             merge_mode='concat')(in_im)
     out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(x)
     model = Model(in_im, out)
+
     return model
 
 
@@ -320,13 +317,63 @@ def BUnetConvLSTM_NtoN(n_classes, filters=16, filters_lstm=64, ts=5):
 
     d3 = transpose_layer_over_time(x,filters*4)
     d3 = concatenate([d3, p3], axis=4)
+
     d3=dilated_layer_over_time(d3,filters*4)
     d2 = transpose_layer_over_time(d3,filters*2)
     d2 = concatenate([d2, p2], axis=4)
+
     d2=dilated_layer_over_time(d2,filters*2)
     d1 = transpose_layer_over_time(d2,filters)
     d1 = concatenate([d1, p1], axis=4)
+
     out=dilated_layer_over_time(d1,filters)
     out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(out)
     model = Model(in_im, out)
+
+    return model
+
+def BUnetConvLSTM2_NtoN(n_classes, filters=16, filters_lstm=64, ts=5):
+    ''' 
+    n_blocks = 4
+    Just one conv layer at beginning to reduce number of parameters
+
+    ts: numer of time-steps (window size) '''
+
+    in_im = Input(shape=(ts, None, None, 1))
+    p1=dilated_layer_over_time(in_im,filters)			
+    # p1=dilated_layer_over_time(p1,filters)
+    e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+
+    p2=dilated_layer_over_time(e1,filters*2)
+    e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+
+    p3=dilated_layer_over_time(e2,filters*4)
+    e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+
+    p4=dilated_layer_over_time(e3,filters*8)
+    e4 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p4)
+
+    x = Bidirectional(
+        ConvLSTM2D(filters=filters_lstm, kernel_size=(3,3), return_sequences=True, padding="same"),
+            merge_mode='concat')(e4)
+
+    d4 = transpose_layer_over_time(x,filters*8)
+    d4 = concatenate([d4, p4], axis=4)
+
+    d3=dilated_layer_over_time(d4,filters*8)
+    d3 = transpose_layer_over_time(d4,filters*4)
+    d3 = concatenate([d3, p3], axis=4)
+
+    d3=dilated_layer_over_time(d3,filters*4)
+    d2 = transpose_layer_over_time(d3,filters*2)
+    d2 = concatenate([d2, p2], axis=4)
+
+    d2=dilated_layer_over_time(d2,filters*2)
+    d1 = transpose_layer_over_time(d2,filters)
+    d1 = concatenate([d1, p1], axis=4)
+
+    out=dilated_layer_over_time(d1,filters)
+    out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(out)
+    model = Model(in_im, out)
+    
     return model

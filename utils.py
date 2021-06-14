@@ -46,7 +46,29 @@ def zoom_ts(x,y):
     return tf.cond(choice < 0.5, lambda: (x,y) , lambda: auxf_ts(x,y))
 
 
-def make_aug(dataset, type_aug, mode="normal"):
+def zoom_ts_n2n(x,y):
+
+    def auxf(x,y):
+        ratio = 0.75
+        sh = tf.cast(tf.shape(x) , tf.float32)
+        sh_lab = tf.cast(tf.shape(y) , tf.float32)
+        crop_size_img = [tf.math.round(sh[1]*ratio), tf.math.round(sh[2]*ratio), sh[3]]
+        crop_size_lab = [tf.math.round(sh[1]*ratio), tf.math.round(sh[2]*ratio), sh_lab[3]]
+        x_crop = tf.stack([tf.random_crop(value = x[idx], size = crop_size_img, seed = 42) for idx in range(x.get_shape()[0])])
+        y_crop = tf.stack([tf.random_crop(value = y[idx], size = crop_size_lab, seed = 42) for idx in range(x.get_shape()[0])])
+
+        x_back = tf.stack([tf.image.resize_images(x_crop[idx], size = tf.cast(sh[1:3], tf.int32)) for idx in range(x.get_shape()[0])])
+        y_back = tf.stack([tf.image.resize_images(y_crop[idx], size = tf.cast(sh[1:3], tf.int32)) for idx in range(x.get_shape()[0])])
+
+        return tf.cast(x_back, tf.float64), tf.cast(tf.math.round(y_back), tf.float32)
+    
+    choice = tf.random_uniform(shape=[], minval=0., maxval=1., dtype=tf.float32)
+
+    # Only apply zoom 50% of the time
+    return tf.cond(choice < 0.5, lambda: (x,y) , lambda: auxf(x,y))
+
+
+def make_aug(dataset, type_aug, mode="normal", type_ts="nto1"):
 
     if mode=="normal":
 
@@ -56,10 +78,14 @@ def make_aug(dataset, type_aug, mode="normal"):
         # if type_aug == "aug2":
         #     dataset = dataset.concatenate(aug1).concatenate(aug2).concatenate(aug4)
 
-    else:
+    else: # ts
 
-        if type_aug == "aug1":
-            dataset = dataset.map(zoom_ts)
+        if type_ts == "nto1":
+            if type_aug == "aug1":
+                dataset = dataset.map(zoom_ts)
+        else: # n-to-n
+            if type_aug == "aug1":
+                dataset = dataset.map(zoom_ts_n2n)      
 
     return dataset
 
