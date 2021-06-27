@@ -51,6 +51,41 @@ def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
 
     return model
 
+def bottleneck(x, filters_bottleneck, mode='cascade', depth=6,
+               kernel_size=(3, 3), activation='relu'):
+    dilated_layers = []
+    if mode == 'cascade':  # used in the competition
+        for i in range(depth):
+            x = Conv2D(filters_bottleneck, kernel_size,
+                       activation=activation, padding='same', dilation_rate=2**i)(x)
+            dilated_layers.append(x)
+        return add(dilated_layers)
+    elif mode == 'parallel':  # Like "Atrous Spatial Pyramid Pooling"
+        for i in range(depth):
+            dilated_layers.append(
+                Conv2D(filters_bottleneck, kernel_size,
+                       activation=activation, padding='same', dilation_rate=2**i)(x)
+            )
+        return add(dilated_layers)
+
+def AtrousUNet(n_classes, filters=64, n_block=4, BN = False, mode="cascade"):
+    
+    inp = Input(shape=(None,None, 1))
+    
+    enc, skip = encoder(inp, filters, n_block, BN)
+    bottle = bottleneck(enc, filters_bottleneck=filters * 2**n_block, mode=mode)
+    dec = decoder(bottle, skip, filters, n_block, BN)
+    output = Conv2D(n_classes, (1, 1), activation='softmax')(dec)
+
+    model = Model(inp, output, name='U-Net_Dilated')
+
+    return model
+
+##################################
+# LSTM's version
+##################################
+
+
 def conv2d_block_ts(input_tensor, n_filters, kernel_size=3, batchnorm=True):
     # first layer
     x = TimeDistributed(Conv2D(n_filters, kernel_size, kernel_initializer="he_normal", padding="same"))(input_tensor)
