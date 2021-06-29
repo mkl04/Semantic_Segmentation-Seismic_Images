@@ -194,6 +194,9 @@ def section_loader_test(model, split='test1', backbone=False, get_prob=False, no
         return output_p/2.
     return np.argmax(output_p,axis=-1)
 
+##########################
+# N to 1
+##########################
 
 class section_loader_ts():
     ''' Section loader for time-series images'''
