@@ -6,17 +6,16 @@ from keras.regularizers import l1,l2
 from keras import backend as K
 import tensorflow as tf
 
-def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
-    # first layer
-    x = Conv2D(n_filters, kernel_size, kernel_initializer="he_normal", padding="same")(input_tensor)
-    if batchnorm:
-        x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    # second layer
-    x = Conv2D(n_filters, kernel_size, kernel_initializer="he_normal",padding="same")(x)
-    if batchnorm:
-        x = BatchNormalization()(x)
-    x = Activation("relu")(x)
+def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True, n_layers=2):
+
+    for i in range(n_layers):
+        if i==0:
+            x = Conv2D(n_filters, kernel_size, kernel_initializer="he_normal", padding="same")(input_tensor)
+        else:
+            x = Conv2D(n_filters, kernel_size, kernel_initializer="he_normal", padding="same")(x)
+        if batchnorm:
+            x = BatchNormalization()(x)
+        x = Activation("relu")(x)
     return x
 
 def encoder(x, filters=16, n_block=3, batchnorm=False, dropout=False):
@@ -555,3 +554,77 @@ def BUnetAtrousConvLSTM_NtoN(n_classes, filters=16, filters_lstm=256, ts=5, mode
     model = Model(in_im, out)
     
     return model
+
+def conv2d_block_TD(input_tensor, n_filters, kernel_size=3, batchnorm=True, n_layers=1):
+
+    for i in range(n_layers):
+        if i==0:
+            x = TimeDistributed(Conv2D(n_filters, kernel_size, kernel_initializer="he_normal", padding="same"))(input_tensor)
+        else:
+            x = TimeDistributed(Conv2D(n_filters, kernel_size, kernel_initializer="he_normal", padding="same"))(x)
+        if batchnorm:
+            x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+    return x
+
+
+def encoder_TD(x, filters=16, n_block=3, batchnorm=False, dropout=False):
+    skip = []
+    for i in range(n_block):
+        x = conv2d_block_TD(x, filters * 2**i, batchnorm=batchnorm)
+        skip.append(x)
+        x = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(x)
+        if dropout:
+            x = Dropout(0.2)(x)
+    return x, skip
+
+
+def BUnetConvLSTM3_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+    ''' 
+    n_blocks = 4
+    Just one conv layer at beginning to reduce number of parameters
+
+    ts: numer of time-steps (window size) '''
+
+    inp = Input(shape=(ts, None, None, 1))
+    # p1=conv2d_block_TD(in_im,filters)			
+    # e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+
+    # p2=conv2d_block_TD(e1,filters*2)
+    # e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+
+    # p3=conv2d_block_TD(e2,filters*4)
+    # e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+
+    # p4=conv2d_block_TD(e3,filters*8)
+    # e4 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p4)
+
+
+    enc, skip = encoder_TD(inp, filters, n_block, BN, DP)
+    p1, p2, p3, p4 = skip
+
+    bottle = Bidirectional(
+        ConvLSTM2D(filters=filters_lstm, kernel_size=(3,3), return_sequences=True, padding="same"),
+            merge_mode='concat')(enc)
+
+    d4 = transpose_layer_over_time(bottle, filters*8)
+    d4 = concatenate([d4, p4], axis=4)
+
+    d3=conv2d_block_TD(d4,filters*8)
+    d3 = transpose_layer_over_time(d4,filters*4)
+    d3 = concatenate([d3, p3], axis=4)
+
+    d3=conv2d_block_TD(d3,filters*4)
+    d2 = transpose_layer_over_time(d3,filters*2)
+    d2 = concatenate([d2, p2], axis=4)
+
+    d2=conv2d_block_TD(d2,filters*2)
+    d1 = transpose_layer_over_time(d2,filters)
+    d1 = concatenate([d1, p1], axis=4)
+
+    out=conv2d_block_TD(d1,filters)
+    out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(out)
+    model = Model(inp, out)
+    
+    return model
+
