@@ -19,19 +19,19 @@ def mIoU(y_true, y_pred): # [bs,h,w,n_cl]
     
     return K.mean(iou)
 
-# def dice(y_true, y_pred, smooth=1):
+def dice(y_true, y_pred, smooth=1):
 
-#     y_true = K.argmax(y_true, axis=-1)
-#     y_pred = K.argmax(y_pred, axis=-1)
+    y_true = K.argmax(y_true, axis=-1)
+    y_pred = K.argmax(y_pred, axis=-1)
 
-#     intersection = K.sum(y_true * y_pred, axis=[1,2])
-#     union = K.sum(y_true, axis=[1,2]) + K.sum(y_pred, axis=[1,2])
-#     dice_coefx = 2.*K.mean((intersection + smooth)/(union + smooth), axis=0)
+    intersection = K.sum(y_true * y_pred, axis=[1,2])
+    union = K.sum(y_true, axis=[1,2]) + K.sum(y_pred, axis=[1,2])
+    dice_coefx = 2.*K.mean((intersection + smooth)/(union + smooth), axis=0)
     
-#     return dice_coefx
+    return dice_coefx
 
-# def dice_coef(y_true, y_pred, smooth=1):
-#     intersection = K.sum(y_true * y_pred, axis=[1,2])
-#     union =  K.sum(tf.cast(y_true, tf.int64), axis=[1,2]) + K.sum(y_pred, axis=[1,2])
-#     dice = 2.*K.mean((intersection + smooth)/(union + smooth), axis=0).numpy()
-#     return dice
+def dice_coef(y_true, y_pred, smooth=1):
+    intersection = K.sum(y_true * y_pred, axis=[1,2])
+    union =  K.sum(tf.cast(y_true, tf.int64), axis=[1,2]) + K.sum(y_pred, axis=[1,2])
+    dice = 2.*K.mean((intersection + smooth)/(union + smooth), axis=0).numpy()
+    return dice

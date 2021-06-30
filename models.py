@@ -38,7 +38,22 @@ def decoder(x, skip, filters, n_block=3, batchnorm=False, dropout=False):
     return x
 
 def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
-    
+    """
+    Function to create the U-Net architecture
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    n_block : int
+        number of blocks for encoder/decoder path
+    BN : bool
+        Batch Normalization on each convolutional layer
+    DP : bool
+        Dropout
+    """
     inp = Input(shape=(None,None, 1))
     
     enc, skip = encoder(inp, filters, n_block, BN, DP)
@@ -50,20 +65,36 @@ def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
 
     return model
 
-def bottleneck(x, filters_bottleneck, mode='cascade', depth=6,
-               kernel_size=(3, 3), activation='relu'):
+def bottleneck(x, filters_bottleneck, mode='cascade', depth=6, kernel_size=3):
+    """
+    Bottleneck for the Atrous U-Net architecture
+
+    Parameters
+    ----------
+    x : Layer
+        previous layer
+    filters_bottleneck : int
+        number of filter at the bottleneck's convolutional layer 
+    mode : str
+        'cascade' or 'parallel'
+    depth : int
+        number of atrous convolutional layers
+    kernel_size : int
+
+    """
+
     dilated_layers = []
     if mode == 'cascade':  # used in the competition
         for i in range(depth):
             x = Conv2D(filters_bottleneck, kernel_size,
-                       activation=activation, padding='same', dilation_rate=2**i)(x)
+                       activation='relu', padding='same', dilation_rate=2**i)(x)
             dilated_layers.append(x)
         return add(dilated_layers)
     elif mode == 'parallel':  # Like "Atrous Spatial Pyramid Pooling"
         for i in range(depth):
             dilated_layers.append(
                 Conv2D(filters_bottleneck, kernel_size,
-                       activation=activation, padding='same', dilation_rate=2**i)(x)
+                       activation='relu', padding='same', dilation_rate=2**i)(x)
             )
         return add(dilated_layers)
 
@@ -90,7 +121,19 @@ def AtrousUNet(n_classes, filters=64, n_block=4, BN = False, mode="cascade"):
 #################
 
 def UConvLSTM_Nto1(n_classes, filters=32, ts=5):
-    ''' ts: numer of time-steps (window size) '''
+    """
+    Unidirectional ConvLSTM N-to-1
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    ts : int
+        numer of time-steps (window size)
+    """
+
     in_im = Input(shape=(ts, None, None, 1))
     x = ConvLSTM2D(filters=filters, kernel_size=(3,3), padding="same")(in_im)
     out = Conv2D(n_classes, (1,1), activation = 'softmax', padding='same')(x)
@@ -99,7 +142,18 @@ def UConvLSTM_Nto1(n_classes, filters=32, ts=5):
 
 
 def BConvLSTM_Nto1(n_classes, filters=32, ts=5):
-    ''' ts: numer of time-steps (window size) '''
+    """
+    Bidirectional ConvLSTM N-to-1
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    ts : int
+        numer of time-steps (window size)
+    """
     in_im = Input(shape=(ts, None, None, 1))
     x = Bidirectional(ConvLSTM2D(filters, 3, padding="same"), merge_mode='concat')(in_im)
     out = Conv2D(n_classes, (1, 1), activation='softmax', padding='same')(x)
@@ -139,11 +193,6 @@ def conv2d_transpose_block(input_tensor, n_filters, kernel_size=3, batchnorm=Tru
     return x
 
 def BUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
-    ''' 
-    n_blocks = 4
-    Just one conv layer at beginning to reduce number of parameters
-
-    ts: numer of time-steps (window size) '''
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -174,11 +223,26 @@ def BUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm
 
 
 def BUnetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
-    ''' 
-    n_blocks = 4
-    Just one conv layer at beginning to reduce number of parameters
+    """
+    Function to create the Bidirectional U-Net ConvLSTM architecture
 
-    ts: numer of time-steps (window size) '''
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    n_block : int
+        number of blocks for encoder/decoder path
+    filters_lstm : int
+        number of filters in the ConvLSTM layer
+    ts : int
+        numer of time-steps (window size)      
+    BN : bool
+        Batch Normalization on each convolutional layer
+    DP : bool
+        Dropout
+    """
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -222,7 +286,18 @@ def BUnetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=Tr
 
 
 def UConvLSTM_NtoN(n_classes, filters=32, ts=5):
-    ''' ts: numer of time-steps (window size) '''
+    """
+    Unidirectional ConvLSTM N-to-N
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    ts : int
+        numer of time-steps (window size)
+    """
     in_im = Input(shape=(ts, None, None, 1))
     x = ConvLSTM2D(filters=filters, kernel_size=(3,3), return_sequences=True, padding="same")(in_im)
     out = TimeDistributed(Conv2D(n_classes, (1,1), activation = 'softmax', padding='same'))(x)
@@ -232,7 +307,18 @@ def UConvLSTM_NtoN(n_classes, filters=32, ts=5):
 
 
 def BConvLSTM_NtoN(n_classes, filters=32, ts=5):
-    ''' ts: numer of time-steps (window size) '''
+    """
+    Bidirectional ConvLSTM N-to-N
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    ts : int
+        numer of time-steps (window size)
+    """
     in_im = Input(shape=(ts, None, None, 1))
     x = Bidirectional(
         ConvLSTM2D(filters=filters, kernel_size=(3,3), return_sequences=True, padding="same"), 
@@ -253,11 +339,6 @@ def conv2d_transpose_block_TD(input_tensor, n_filters, kernel_size=3, batchnorm=
     return x
 
 def BUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
-    ''' 
-    n_blocks = 4
-    Just one conv layer at beginning to reduce number of parameters
-
-    ts: numer of time-steps (window size) '''
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -291,7 +372,7 @@ def BUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, 
     return model
 
 def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6,
-               kernel_size=(3, 3), activation='tanh'): #relu
+               kernel_size=3, activation='tanh'): #relu
     dilated_layers = []
 
     if mode == 'cas':  # cascade, used in the competition
@@ -315,11 +396,6 @@ def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6,
 
 
 def BAtrousUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256, ts=5, BN=True, DP=False, mode="par"):
-    ''' 
-    n_blocks = 4
-    Just one conv layer at beginning to reduce number of parameters
-
-    ts: numer of time-steps (window size) '''
 
     inp = Input(shape=(ts, None, None, 1))
 

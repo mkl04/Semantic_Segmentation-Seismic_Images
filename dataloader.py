@@ -67,7 +67,7 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
 
 
 class section_loader():
-    ''' Section loader for images'''
+    ''' Section loader of seismic blocks'''
 
     def __init__(self, direct="i", split='train', loc='sd'):
 
@@ -121,9 +121,6 @@ class section_loader():
             
             im = np.expand_dims(im, axis = -1)
 
-            #just to test normalize form -> have to modify test
-            # im = (im+1)/2.
-
             yield im, lbl
 
 
@@ -145,7 +142,21 @@ def F3_generator(dataset, _bs):
             yield x_batch, y_batch
 
 
-def section_loader_test(model, split='test1', backbone=False, get_prob=False, normalize=False, loc='sd'):
+def section_loader_test(model, split='test1', get_prob=False, loc='sd'):
+    """
+    Section loader of seismic bloc for inference
+
+    Parameters
+    ----------
+    model : Model
+        trained model
+    split : str
+        test options: 'test1' or 'test2'
+    get_prob : bool
+        return probabilities or argmax values
+    loc : str
+        location of test data
+    """
 
     if loc=="sd":
         root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
@@ -174,13 +185,7 @@ def section_loader_test(model, split='test1', backbone=False, get_prob=False, no
         im = cv2.resize(im,(a,b))
         im = np.expand_dims(im, axis = -1)
         im = np.expand_dims(im, axis =  0)
-
-        if backbone:
-            im = (np.repeat(im,3,axis=3)+1)/2.
         
-        if normalize:
-            im = (im+1)/2.
-
         model_output = model.predict(im)
         model_output = cv2.resize(model_output[0],(img_size[1], img_size[0]))
             
@@ -199,7 +204,7 @@ def section_loader_test(model, split='test1', backbone=False, get_prob=False, no
 ##########################
 
 class section_loader_ts():
-    ''' Section loader for time-series images'''
+    ''' Time-steps section loader of seismic blocks - N-to-1'''
 
     def __init__(self, direct="i", split='train', window=5, loc='sd'):
         
@@ -262,13 +267,10 @@ class section_loader_ts():
             
             im = np.expand_dims(im, axis = -1)
 
-            #just to test normalize form -> have to modify test
-            # im = (im+1)/2.
-
             yield im, lbl
 
 
-def section_loader_test_ts(model, split='test1', backbone=False, get_prob=False, normalize=False, loc='sd', window=5):
+def section_loader_test_ts(model, split='test1', get_prob=False, loc='sd', window=5):
 
     if loc=="sd":
         root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
@@ -314,13 +316,7 @@ def section_loader_test_ts(model, split='test1', backbone=False, get_prob=False,
         
         im = np.expand_dims(im, axis = -1)
         im = np.expand_dims(im, axis =  0)
-
-#         if backbone:
-#             im = (np.repeat(im,3,axis=3)+1)/2.
         
-        if normalize:
-            im = (im+1)/2.
-
         model_output = model.predict(im)
         model_output = cv2.resize(model_output[0], (img_size[1], img_size[0]))
             
@@ -340,7 +336,7 @@ def section_loader_test_ts(model, split='test1', backbone=False, get_prob=False,
 ##########################
 
 class section_loader_ts_n2n():
-    ''' Section loader for time-series images'''
+    ''' Time-steps section loader of seismic blocks - N-to-N'''
 
     def __init__(self, direct="i", split='train', window=5, loc='sd'):
         
@@ -405,13 +401,10 @@ class section_loader_ts_n2n():
                 
             im = np.expand_dims(im, axis = -1)
 
-            #just to test normalize form -> have to modify test
-            # im = (im+1)/2.
-
             yield im, lbl
 
 
-def section_loader_test_ts_n2n(model, split='test1', backbone=False, get_prob=False, normalize=False, loc='sd', window=5):
+def section_loader_test_ts_n2n(model, split='test1', get_prob=False, loc='sd', window=5):
 
     if loc=="sd":
         root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
@@ -456,9 +449,6 @@ def section_loader_test_ts_n2n(model, split='test1', backbone=False, get_prob=Fa
         
         im = np.expand_dims(im, axis = -1)
         im = np.expand_dims(im, axis =  0)
-
-        if normalize:
-            im = (im+1)/2.
 
         model_output = model.predict(im)
         model_output = np.vstack([
