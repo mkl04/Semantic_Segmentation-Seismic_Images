@@ -331,7 +331,8 @@ def BConvLSTM_NtoN(n_classes, filters=32, ts=5):
 
 def conv2d_transpose_block_TD(input_tensor, n_filters, kernel_size=3, batchnorm=True):
 
-    x = TimeDistributed(Conv2DTranspose(n_filters, kernel_size, kernel_initializer="he_normal", padding="same"))(input_tensor)
+    x = TimeDistributed(Conv2DTranspose(n_filters, kernel_size, strides=2, kernel_initializer="he_normal",
+     padding="same"))(input_tensor)
     if batchnorm:
         x = BatchNormalization()(x)
     x = Activation("relu")(x)

@@ -1,2 +1,2 @@
 # DL_project
-Project about Semantic Facies for the course Deep Learning
+Project about Semantic Segmentation in Seismic Images (Facies) for the Deep Learning course 
