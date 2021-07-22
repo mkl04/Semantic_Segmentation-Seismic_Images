@@ -2,6 +2,9 @@ import tensorflow as tf
 import keras.backend as K
 
 def mIoU(y_true, y_pred): # [bs,h,w,n_cl]
+    """
+    Mean Intersection over Union for categorical multi-class.
+    """
     n_classes = K.int_shape(y_pred)[-1]
     true_pixels = K.argmax(y_true, axis=-1) # [bs,h,w]
     pred_pixels = K.argmax(y_pred, axis=-1)

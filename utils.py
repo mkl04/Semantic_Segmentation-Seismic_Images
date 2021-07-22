@@ -26,6 +26,8 @@ def zoom(x,y):
 
 def zoom_ts(x,y):
 
+    # TODO: juntar los zoom_ts y zoom_ts_n2n para que ingrese solo un flag de "type_ts"
+
     def auxf_ts(x,y):
         ratio = 0.75 
         sh = tf.cast(tf.shape(x) , tf.float32)
@@ -69,6 +71,9 @@ def zoom_ts_n2n(x,y):
 
 
 def make_aug(dataset, type_aug, mode="normal", type_ts="nto1"):
+    """
+    Handle different types of data augmentation.
+    """
 
     if mode=="normal":
 

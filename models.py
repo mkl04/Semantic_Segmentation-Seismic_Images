@@ -39,7 +39,7 @@ def decoder(x, skip, filters, n_block=3, batchnorm=False, dropout=False):
 
 def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
     """
-    Function to create the U-Net architecture
+    Function to create the U-Net architecture.
 
     Parameters
     ----------
@@ -50,10 +50,11 @@ def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
     n_block : int
         number of blocks for encoder/decoder path
     BN : bool
-        Batch Normalization on each convolutional layer
+        if True, adds Batch Normalization on each convolutional layer
     DP : bool
-        Dropout
+        if True, adds Dropout layers
     """
+
     inp = Input(shape=(None,None, 1))
     
     enc, skip = encoder(inp, filters, n_block, BN, DP)
@@ -65,9 +66,9 @@ def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
 
     return model
 
-def bottleneck(x, filters_bottleneck, mode='cascade', depth=6, kernel_size=3):
+def bottleneck(x, filters_bottleneck, mode='cascade', depth=6):
     """
-    Bottleneck for the Atrous U-Net architecture
+    Bottleneck for the Atrous U-Net architecture.
 
     Parameters
     ----------
@@ -79,27 +80,41 @@ def bottleneck(x, filters_bottleneck, mode='cascade', depth=6, kernel_size=3):
         'cascade' or 'parallel'
     depth : int
         number of atrous convolutional layers
-    kernel_size : int
-
     """
 
     dilated_layers = []
     if mode == 'cascade':  # used in the competition
         for i in range(depth):
-            x = Conv2D(filters_bottleneck, kernel_size,
+            x = Conv2D(filters_bottleneck, (3,3),
                        activation='relu', padding='same', dilation_rate=2**i)(x)
             dilated_layers.append(x)
         return add(dilated_layers)
     elif mode == 'parallel':  # Like "Atrous Spatial Pyramid Pooling"
         for i in range(depth):
             dilated_layers.append(
-                Conv2D(filters_bottleneck, kernel_size,
+                Conv2D(filters_bottleneck, (3,3),
                        activation='relu', padding='same', dilation_rate=2**i)(x)
             )
         return add(dilated_layers)
 
-def AtrousUNet(n_classes, filters=64, n_block=4, BN = False, mode="cascade"):
-    
+def AtrousUNet(n_classes, filters=64, n_block=4, BN=False, mode="cascade"):
+    """
+    Function to create the Atrous U-Net architecture.
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    n_block : int
+        number of blocks for encoder/decoder path
+    BN : bool
+        if True, adds Batch Normalization on each convolutional layer
+    mode : str
+        mode of the bottleneck with dilated convolutional. i.e. 'cascade' or 'parallel'
+    """
+
     inp = Input(shape=(None,None, 1))
     
     enc, skip = encoder(inp, filters, n_block, BN)
@@ -154,6 +169,7 @@ def BConvLSTM_Nto1(n_classes, filters=32, ts=5):
     ts : int
         numer of time-steps (window size)
     """
+
     in_im = Input(shape=(ts, None, None, 1))
     x = Bidirectional(ConvLSTM2D(filters, 3, padding="same"), merge_mode='concat')(in_im)
     out = Conv2D(n_classes, (1, 1), activation='softmax', padding='same')(x)
@@ -239,9 +255,9 @@ def BUnetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=Tr
     ts : int
         numer of time-steps (window size)      
     BN : bool
-        Batch Normalization on each convolutional layer
+        if True, adds Batch Normalization on each convolutional layer
     DP : bool
-        Dropout
+        if True, adds Dropout layers
     """
 
     inp = Input(shape=(ts, None, None, 1))
@@ -372,14 +388,32 @@ def BUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, 
     
     return model
 
-def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6,
-               kernel_size=3, activation='tanh'): #relu
+def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6, activation='tanh'):
+    """
+    Bottleneck used for the Atrous U-Net architecture, but customizes to
+    LSTM(sequence) version.
+
+    Parameters
+    ----------
+    x : Layer
+        previous layer
+    filters_bottleneck : int
+        number of filter at the bottleneck's convolutional layer 
+    mode : str
+        'cascade' or 'parallel'
+    depth : int
+        number of atrous convolutional layers
+    activation : str
+        activation for the ConvLSTM layer. i.e. 'relu' or 'tanh'
+
+    """
+
     dilated_layers = []
 
     if mode == 'cas':  # cascade, used in the competition
         for i in range(depth):
             x = Bidirectional(
-                ConvLSTM2D(filters_bottleneck, kernel_size,
+                ConvLSTM2D(filters_bottleneck, (3,3),
                        return_sequences=True, padding="same", dilation_rate=2**i),
                     merge_mode='concat')(x)
             dilated_layers.append(x)
@@ -389,7 +423,7 @@ def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6,
         for i in range(depth):
             dilated_layers.append(
                 Bidirectional(
-                ConvLSTM2D(filters_bottleneck, kernel_size,
+                ConvLSTM2D(filters_bottleneck, (3,3),
                        return_sequences=True, padding="same", dilation_rate=2**i),
                     merge_mode='concat')(x)
             )
@@ -397,6 +431,28 @@ def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6,
 
 
 def BAtrousUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256, ts=5, BN=True, DP=False, mode="par"):
+    """
+    Function to create the Bidirectional U-Net ConvLSTM architecture
+
+    Parameters
+    ----------
+    n_classes : int
+        number of classes
+    filters : int
+        number of filters in the first convolutional layers
+    n_block : int
+        number of blocks for encoder/decoder path
+    filters_lstm : int
+        number of filters in the ConvLSTM layer
+    ts : int
+        numer of time-steps (window size)      
+    BN : bool
+        if True, adds Batch Normalization on each convolutional layer
+    DP : bool
+        if True, adds Dropout layers
+    mode : str
+        mode of the bottleneck with dilated convolutional. i.e. 'cascade' or 'parallel'
+    """
 
     inp = Input(shape=(ts, None, None, 1))
 

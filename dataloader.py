@@ -308,7 +308,6 @@ def section_loader_test_ts(model, split='test1', get_prob=False, loc='sd', windo
         if flip_: # for first slides, we have to change of direction of timesteps images
             im = np.flip(im, axis=0) 
         
-        
         img_size = im.shape[1:3] # H, W
         a, b = make_divisible(img_size)
         
@@ -382,20 +381,22 @@ class section_loader_ts_n2n():
             
             if self.direct == 'i':
                 im = self.seismic[(number-self.window+1):(number+1),:,:]
-                lbl = self.labels[(number-self.window+1):(number+1),:,:]
+                lbl = self.labels[(number-self.window+1):(number+1),:,:] # changes
             elif self.direct == 'x':    
                 im = self.seismic[:,(number-self.window+1):(number+1),:]
-                lbl = self.labels[:,(number-self.window+1):(number+1),:]
+                lbl = self.labels[:,(number-self.window+1):(number+1),:] # changes
                 
             if im.shape[0] == 401:
                 im = [np.expand_dims(cv2.resize(im[:,idx,:], (256,400)) , axis=0) for idx in range(self.window)]
                 im = np.vstack(im)
+                # changes
                 lbl = [np.expand_dims(cv2.resize(lbl[:,idx,:], (256,400)) , axis=0) for idx in range(self.window)]
                 lbl = np.vstack(lbl)
 
             else:
                 im = [np.expand_dims(cv2.resize(im[idx,:,:], (256,688)) , axis=0) for idx in range(self.window)]
                 im = np.vstack(im)
+                # changes
                 lbl = [np.expand_dims(cv2.resize(lbl[idx,:,:], (256,688)) , axis=0) for idx in range(self.window)]
                 lbl = np.vstack(lbl)
                 
@@ -455,12 +456,14 @@ def section_loader_test_ts_n2n(model, split='test1', get_prob=False, loc='sd', w
             np.expand_dims(cv2.resize(model_output[0, idx], (img_size[1], img_size[0])) , axis=0) for idx in range(window)])
         
         if flip_: # for first slides, we have to return to the correct direction of timesteps images
-            model_output = np.flip(model_output, axis=0) 
+            model_output = np.flip(model_output, axis=0) #changes
             
         if direction == 'i':
+            #changes
             output_p[idx_l:idx_r,:,:,:] += model_output
             
         if direction == 'x':
+            #changes
             model_output = np.rollaxis(model_output, 1, 0)
             output_p[:,idx_l:idx_r,:,:] += model_output
             
