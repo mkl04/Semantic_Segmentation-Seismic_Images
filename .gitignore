@@ -132,8 +132,4 @@ dmypy.json
 #tmp
 res/
 data/
-Abstract.docx
-*.docx
-*.pdf
-create_splits.ipynb
 *.srm

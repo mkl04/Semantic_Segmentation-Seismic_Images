@@ -62,7 +62,7 @@ def UNet(n_classes, filters=64, n_block=4, BN=False, DP=False):
     dec = decoder(bottle, skip, filters, n_block, BN, DP)
     output = Conv2D(n_classes, (1, 1), activation='softmax')(dec)
 
-    model = Model(inp, output, name='U-Net')
+    model = Model(inp, output, name='UNet')
 
     return model
 
@@ -208,7 +208,7 @@ def conv2d_transpose_block(input_tensor, n_filters, kernel_size=3, batchnorm=Tru
 
     return x
 
-def BiUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+def BiUNetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -238,7 +238,7 @@ def BiUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lst
     return model
 
 
-def BiUnetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+def BiUNetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
     """
     Function to create the Bidirectional U-Net ConvLSTM architecture
 
@@ -355,7 +355,7 @@ def conv2d_transpose_block_TD(input_tensor, n_filters, kernel_size=3, batchnorm=
 
     return x
 
-def BiUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+def BiUNetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -384,7 +384,7 @@ def BiUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5,
     out = conv2d_block_TD(d1,filters)
     out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(out)
 
-    model = Model(inp, out)
+    model = Model(inp, out, name='BiUNetConvLSTM')
     
     return model
 
@@ -430,7 +430,7 @@ def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6, activation='tanh'
         return add(dilated_layers)
 
 
-def BiAtrousUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256, ts=5, BN=True, DP=False, mode="par"):
+def BiAtrousUNetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256, ts=5, BN=True, DP=False, mode="par"):
     """
     Function to create the Bidirectional U-Net ConvLSTM architecture
 
@@ -479,6 +479,6 @@ def BiAtrousUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256
     out = conv2d_block_TD(d1,filters)
     out = TimeDistributed(Conv2D(n_classes, (1, 1), activation='softmax', padding='same'))(out)
 
-    model = Model(inp, out)
+    model = Model(inp, out, name='BiAtrousUNetConvLSTM')
     
     return model
