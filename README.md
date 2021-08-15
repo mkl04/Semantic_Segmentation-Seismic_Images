@@ -15,7 +15,7 @@ The dataset used was the Netherlands F3 block, which is a fully-annotated 3D geo
 The following table shows the two best results, which managed to outperform the results of the paper that presented the data. For more details, see [Towards a Benchmark for Sedimentary Facies Classification: Applied to the Netherlands F3 Block](https://www.researchgate.net/publication/351508702_Towards_a_Benchmark_for_Sedimentary_Facies_Classification_Applied_to_the_Netherlands_F3_Block).
 
 | Syntax      | Pixel Accuracy| Mean Class Accuracy| Frequency-Weighted Intersection over Union|
-| ----------- | ----------- | ----------- | ----------- |
+| ----------- | :----: | :----: | :----: |
 | Alaudah et al.      | 0.905 | 0.817 | 0.832 |
 | BiAtrousUnetConvLSTM      | 0.942 | 0.848 | 0.894 |
 | Atrous U-Net   | 0.943 | 0.871 | 0.895 |
