@@ -208,7 +208,7 @@ def conv2d_transpose_block(input_tensor, n_filters, kernel_size=3, batchnorm=Tru
 
     return x
 
-def BUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+def BiUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -238,7 +238,7 @@ def BUnetConvLSTM_no_skip_connect(n_classes, filters=16, n_block=4, filters_lstm
     return model
 
 
-def BUnetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+def BiUnetConvLSTM(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
     """
     Function to create the Bidirectional U-Net ConvLSTM architecture
 
@@ -355,7 +355,7 @@ def conv2d_transpose_block_TD(input_tensor, n_filters, kernel_size=3, batchnorm=
 
     return x
 
-def BUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
+def BiUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=64, ts=5, BN=True, DP=False):
 
     inp = Input(shape=(ts, None, None, 1))
 
@@ -430,7 +430,7 @@ def ASPP_over_time(x, filters_bottleneck, mode='cas', depth=6, activation='tanh'
         return add(dilated_layers)
 
 
-def BAtrousUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256, ts=5, BN=True, DP=False, mode="par"):
+def BiAtrousUnetConvLSTM_NtoN(n_classes, filters=16, n_block=4, filters_lstm=256, ts=5, BN=True, DP=False, mode="par"):
     """
     Function to create the Bidirectional U-Net ConvLSTM architecture
 
