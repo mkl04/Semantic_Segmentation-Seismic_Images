@@ -11,6 +11,15 @@ Implement deep neural networks for Semantic Segmentation for Facies Clasificatio
 
 The dataset used was the Netherlands F3 block, which is a fully-annotated 3D geological model open-sourced by [Alaudah et al](https://arxiv.org/pdf/1901.07659.pdf). It has six classes, where each one represents a facies with the exception of one that is the union of two facies because it was difficult to define the limits between them. The three-dimensional block has a dimension of 600x900x255. In order to get a model that generalizes correctly, ranges were defined to split the data in one block for training and two testing blocks. 
 
+## Implementation
+
+Docker available for this proyect:
+```
+docker pull smitharauco/tensorflow_1.13:latest
+```
+First, .txt files are generated for loading the sections after performing the split in training, validation and test set. For this use the notebook `generate_and_load_sections.ipynb`.
+
+For training the model, you can see an example in `Baseline_UNet_Train.ipynb`.
 
 ## Results
 
@@ -36,3 +45,17 @@ The following table shows the two best results, which managed to outperform the 
     isbn="978-3-030-76228-5"
 }
 ```
+https://link.springer.com/chapter/10.1007/978-3-030-76228-5_15
+
+
+
+```tex
+@InProceedings{campos2021convlstmf3,
+    author="Campos Trinidad, Maykol J. and Arauco Canchumuni, Smith W., Queiroz Feitosa, Raul and Cavalcanti Pacheco, Marco Aurélio",
+    title="Seismic Facies Segmentation Using Atrous Convolutional-LSTM Network",
+    year="2021",
+    conference="Proceedings of the XLII Ibero-Latin-American Congress on Computational Methods in Engineering and III Pan-American Congress on Computational Mechanics, ABMEC-IACM",
+}
+```
+
+https://cilamce.com.br/anais/arearestrita/apresentacoes/252/10005.pdf

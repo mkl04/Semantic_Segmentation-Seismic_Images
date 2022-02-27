@@ -9,13 +9,13 @@ from keras import backend as K
 from utils import make_divisible
 
 
-def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_val=0.3, loc='sd'):
+def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, split_test=0.3, loc='sd'):
     '''Create inline and crossline 2D sections for training and validation'''
     
     if loc=='sd':
         path_data = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
     else:
-        path_data = 'data'
+        path_data = loc
 
     iline, xline = im_shape
     
@@ -27,10 +27,10 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
     for i in vert_locations:
         vert_slides = np.arange(i, i+n_groups)
         
-        aux = list(vert_slides[:-int(per_val*n_groups)])
+        aux = list(vert_slides[:-int(split_test*n_groups)])
         p_tr_list += ['i_' + str(ii) for ii in aux if ii < iline]
         
-        aux = list(vert_slides[-int(per_val*n_groups):])
+        aux = list(vert_slides[-int(split_test*n_groups):])
         p_vl_list += ['i_' + str(ii) for ii in aux if ii < iline]
     
     random.shuffle(p_tr_list)
@@ -41,10 +41,10 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
     for j in horz_locations:
         horz_slides = np.arange(j, j+n_groups)
         
-        aux = list(horz_slides[:-int(per_val*n_groups)])
+        aux = list(horz_slides[:-int(split_test*n_groups)])
         aux1 += ['x_' + str(jj) for jj in aux if jj < xline]
         
-        aux = list(horz_slides[-int(per_val*n_groups):])
+        aux = list(horz_slides[-int(split_test*n_groups):])
         aux2 += ['x_' + str(jj) for jj in aux if jj < xline]
     random.shuffle(aux1)
     random.shuffle(aux2)
@@ -52,7 +52,7 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
     p_tr_list+=aux1
     p_vl_list+=aux2
     
-    path_splits = pjoin(path_data, 'new_splits')
+    path_splits = pjoin(path_data, 'splits')
     
     if not os.path.exists(path_splits):
         os.makedirs(path_splits)
@@ -66,6 +66,27 @@ def split_train_val(im_shape=(401,701), loader_type='section', n_groups=10, per_
     file_object.close()
 
 
+def split_test(loader_type='section', split='test1', loc='sd'):
+    '''Create inline and crossline 2D sections for test blocks'''
+    
+    if loc=='sd':
+        path_data = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
+    else:
+        path_data = loc
+
+    test_labels = np.load(pjoin(path_data, 'test_once', split + '_labels.npy' ))
+    iline, xline = test_labels.shape[:2]
+
+    i_list = ['i_' + str(ii) for ii in range(iline)]
+    x_list = ['x_' + str(ii) for ii in range(xline)]
+    total_list = i_list + x_list
+    
+    path_splits = pjoin(path_data, 'splits')
+    file_object = open(pjoin(path_splits, '{}_{}.txt'.format(loader_type, split)), 'w')
+    file_object.write('\n'.join(total_list))
+    file_object.close()
+
+
 class section_loader():
     ''' Section loader of seismic blocks'''
 
@@ -74,7 +95,7 @@ class section_loader():
         if loc=="sd":
             self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
         else:
-            self.root = 'data'
+            self.root = loc
         self.split = split
         self.n_classes = 6 
         self.mean = 0.000941 # average of the training data  
@@ -161,7 +182,7 @@ def section_loader_test(model, split='test1', get_prob=False, loc='sd'):
     if loc=="sd":
         root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
     else:
-        root = 'data'
+        root = loc
 
     seismic = np.load(pjoin(root,'test_once', split + '_seismic.npy'))
     
@@ -211,7 +232,7 @@ class section_loader_ts():
         if loc=="sd":
             self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
         else:
-            self.root = 'data'
+            self.root = loc
         self.split = split
         self.n_classes = 6 
         self.direct = direct
@@ -275,7 +296,7 @@ def section_loader_test_ts(model, split='test1', get_prob=False, loc='sd', windo
     if loc=="sd":
         root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
     else:
-        root = 'data'
+        root = loc
 
     seismic = np.load(pjoin(root,'test_once', split + '_seismic.npy'))
     
@@ -342,7 +363,7 @@ class section_loader_ts_n2n():
         if loc=="sd":
             self.root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
         else:
-            self.root = 'data'
+            self.root = loc
         self.split = split
         self.n_classes = 6 
         self.direct = direct
@@ -410,7 +431,7 @@ def section_loader_test_ts_n2n(model, split='test1', get_prob=False, loc='sd', w
     if loc=="sd":
         root = '/scratch/parceirosbr/maykol.trinidad/dataset/F3'
     else:
-        root = 'data'
+        root = loc
 
     seismic = np.load(pjoin(root,'test_once', split + '_seismic.npy'))
     
