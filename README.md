@@ -51,10 +51,13 @@ https://link.springer.com/chapter/10.1007/978-3-030-76228-5_15
 
 ```tex
 @InProceedings{campos2021convlstmf3,
-    author="Campos Trinidad, Maykol J. and Arauco Canchumuni, Smith W., Queiroz Feitosa, Raul and Cavalcanti Pacheco, Marco Aurélio",
-    title="Seismic Facies Segmentation Using Atrous Convolutional-LSTM Network",
-    year="2021",
-    conference="Proceedings of the XLII Ibero-Latin-American Congress on Computational Methods in Engineering and III Pan-American Congress on Computational Mechanics, ABMEC-IACM",
+author="Campos Trinidad, Maykol J.
+and Arauco Canchumuni, Smith W.
+and Queiroz Feitosa, Raul
+and Cavalcanti Pacheco, Marco Aurelio",
+title="Seismic Facies Segmentation Using Atrous Convolutional-LSTM Network",
+year="2021",
+booktitle="Proceedings of the XLII Ibero-Latin-American Congress on Computational Methods in Engineering and III Pan-American Congress on Computational Mechanics, ABMEC-IACM",
 }
 ```
 
