@@ -1,5 +1,4 @@
 # py3.5
-tensorflow-gpu==1.13.0rc2
 Keras==2.2.4
 opencv-python==4.3.0.36
 matplotlib==3.0.3
